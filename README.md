@@ -11,3 +11,6 @@ Stock historical data has been pulled from yahoo finance.
 Calculates their expected return and expected volatility to find the optimal portfolio on the efficient frontier.
 
 ![screenshot](imageDir/frontier.png)
+
+The final result of optimal portfolio analysis using Markowitz Model
+![screenshot](imageDir/optimalresult.png)

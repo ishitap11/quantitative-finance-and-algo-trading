@@ -40,7 +40,7 @@ def show_statistics(returns):
     print(returns.cov()*NUM_TRADING_DAYS)
 
 def get_expected_mean(returns, weights):
-    return np.sum(returns.mean()*weights)*NUM_TRADING_DAYS
+    return np.sum(returns.mean() * weights) * NUM_TRADING_DAYS
 
 def get_expected_risk(returns, weights):
     return np.sqrt(np.dot(weights.T, np.dot(returns.cov()*NUM_TRADING_DAYS, weights)))
@@ -52,6 +52,28 @@ def show_expected_mean_variance(returns, weights):
     # expected risk using covariance
     portfolio_volatility_risk = get_expected_risk(returns, weights)
     print("expected volatility of portfolio: ", portfolio_volatility_risk)
+
+def statistics(weights, returns):
+    portfolio_return = np.sum(returns.mean() * weights) * NUM_TRADING_DAYS
+    portfolio_volatility = np.sqrt(np.dot(weights.T, np.dot(returns.cov() * NUM_TRADING_DAYS, weights)))
+    return np.array([portfolio_return, portfolio_volatility,
+                     portfolio_return / portfolio_volatility])
+
+
+#Returns the sharpe ratio function as -f(x) that can be optimised
+def min_function_sharpe(weights, returns):
+    return -statistics(weights, returns)[2]
+
+
+# we need to define the following for the scipy.optimize()
+# constraints to be applied on 'x' being optimised --> here weights
+# bounds for each value of 'x'
+# optimisation method used SLSQP --> see documentation for details
+def optimise_portfolio(returns, weights):
+    constraints = ({'type': 'eq', 'fun': lambda x: np.sum(x) - 1})
+    bounds = tuple((0, 1) for _ in range(len(stocks)))
+    return opt.minimize(fun=min_function_sharpe, x0=weights[0], args=returns
+                                 , method='SLSQP', bounds=bounds, constraints=constraints)
 
 def generate_portfolio(returns):
     portfolio_weights = []
@@ -76,12 +98,28 @@ def show_portfolio(returns, volatility_risk):
     plt.xlabel('Expected Volatility')
     plt.ylabel('Expected Return')
     plt.colorbar(label='Sharpe Ratio')
+
+def print_optimal_portfolio(optimum, returns):
+    print("Optimal portfolio: ", optimum['x'].round(3))
+    print("Expected return, volatility and Sharpe ratio: ",
+          statistics(optimum['x'].round(3), returns))
+
+def show_optimal_portfolio(opt, rets, portfolio_rets, portfolio_vols):
+    plt.figure(figsize=(10, 6))
+    plt.scatter(portfolio_vols, portfolio_rets, c=portfolio_rets / portfolio_vols, marker='o')
+    plt.grid(True)
+    plt.xlabel('Expected Volatility')
+    plt.ylabel('Expected Return')
+    plt.colorbar(label='Sharpe Ratio')
+    plt.plot(statistics(opt['x'], rets)[1], statistics(opt['x'], rets)[0], 'g*', markersize=20.0)
     plt.show()
 
 if __name__ == "__main__":
     data = download_data()
     show_data(data)
     daily_returns = calculate_return(data)
-    show_statistics(daily_returns)
     portfolio_weights, return_means, volatility_risk = generate_portfolio(daily_returns)
     show_portfolio(return_means, volatility_risk)
+    optimal = optimise_portfolio(daily_returns, portfolio_weights)
+    print_optimal_portfolio(optimal, daily_returns)
+    show_optimal_portfolio(optimal, daily_returns, return_means, volatility_risk)
